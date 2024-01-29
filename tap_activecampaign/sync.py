@@ -19,7 +19,7 @@ def update_currently_syncing(state, stream_name):
 
 def sync(client, config, catalog, state):
     start_date = config.get('start_date')
-
+    extra_params = config.get('extra_params')
     # Get selected_streams from catalog, based on state last_stream
     #   last_stream = Previous currently synced stream, if the load was interrupted
     last_stream = singer.get_currently_syncing(state)
@@ -50,7 +50,8 @@ def sync(client, config, catalog, state):
             state=state,
             start_date=start_date,
             path=stream_obj.path,
-            selected_streams=selected_streams)
+            selected_streams=selected_streams,
+            **extra_params )
 
         update_currently_syncing(state, None)
         LOGGER.info('FINISHED Syncing: {}, total_records: {}'.format(
