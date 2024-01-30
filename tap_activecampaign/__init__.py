@@ -1,12 +1,15 @@
 import sys
 import json
-import argparse
 import singer
-from singer import metadata, utils
 from tap_activecampaign.client import ActiveCampaignClient
+from tap_activecampaign.client_v1 import ActiveCampaignClientV1
 from tap_activecampaign.discover import discover
 from tap_activecampaign.sync import sync
 
+from enum import Enum
+class ApiVersion(Enum):
+    V1 = "V1"
+    V3 = "V3"
 LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = [
@@ -28,12 +31,16 @@ def do_discover():
 def main():
 
     parsed_args = singer.utils.parse_args(REQUIRED_CONFIG_KEYS)
+    api_version = ApiVersion(parsed_args.config.get('api_version', 'V3').upper())
+    ac_clients = { ApiVersion.V1: ActiveCampaignClientV1, ApiVersion.V3: ActiveCampaignClient}
 
-    with ActiveCampaignClient(parsed_args.config['api_url'],
-                              parsed_args.config['api_token'],
-                              parsed_args.config['user_agent'],
-                              parsed_args.config.get('request_timeout')) as client:
-
+    client_class = ac_clients[api_version]
+    with client_class(
+        parsed_args.config["api_url"],
+        parsed_args.config["api_token"],
+        parsed_args.config["user_agent"],
+        parsed_args.config.get("request_timeout"),
+    ) as client:
         state = {}
         if parsed_args.state:
             state = parsed_args.state
