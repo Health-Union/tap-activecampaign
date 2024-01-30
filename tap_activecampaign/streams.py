@@ -649,7 +649,7 @@ class Campaign_report_open_list(ActiveCampaign):
         # Stop parsing report pages when no data is returned from the AC API
         while (
             record_count != -9999
-        ):  # break out of loop when record_count < limit (or no data returned)
+        ):
             params = {
                 "page": page,
                 "campaignid": campaignid,

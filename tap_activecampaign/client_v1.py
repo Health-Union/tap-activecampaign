@@ -79,12 +79,15 @@ class ActiveCampaignClientV1(object):
             headers['User-Agent'] = self.__user_agent
         headers['Api-Token'] = self.__api_token
         headers['Accept'] = 'application/json'
-        url = self.base_url
+        
+        url = f"{self.base_url}/admin/api.php"
+
         response = self.__session.get(
             # Simple endpoint that returns 1 record w/ default organization URN
             url=url,
             headers=headers,
             timeout=self.request_timeout)
+        
         if response.status_code != 200:
             raise_for_error(response)
         else:
