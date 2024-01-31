@@ -17,6 +17,15 @@ LOGGER = singer.get_logger()
 
 
 def ratelimit_mthreading(limit, every):
+    """
+    Decorator function for rate limiting the execution of a function within multi-threaded context.
+    AC rate limit: https://www.activecampaign.com/api/overview.php
+    `With our hosted service we have a API rate limit of 5 requests per second per account.`
+    Args:
+        limit (int): Defines the max number of times the function can be called in a given time window.
+        every (int): The time window within which the function can be called up to the limit.
+                     Expressed in second
+    """
     def limitdecorator(func):
         times = collections.deque()
         lock = threading.Lock()
