@@ -528,6 +528,10 @@ class Campaign_report_open_list(ActiveCampaign):
     replication_method = "INCREMENTAL"
     key_properties = ["subscriberid", "campaignid"]
     extra_fields = ["campaignid"]
+    # The sort_direction needs to be explicitly defined, as the default behavior of API V1 
+    # doesn't correspond with the documentation available at 
+    # https://www.activecampaign.com/api/example.php?call=campaign_report_open_list
+    params = {"sort_direction": "DESC"}
     def sync(
         self,
         client,
@@ -594,7 +598,7 @@ class Campaign_report_open_list(ActiveCampaign):
                         result = future.result()
                         LOGGER.info(f"Result: {result} ")
                         if bookmark_field:
-                            max_bookmark_value = max(max_bookmark_value, result[0])
+                            max_bookmark_value = max(filter( None, ( max_bookmark_value, result[0]) ) )
                         total_records += int(result[1])
 
                     except Exception as e:
@@ -605,7 +609,7 @@ class Campaign_report_open_list(ActiveCampaign):
             result = map(partial_sync_data, campaigns)
             if bookmark_field:
                 max_bookmark_value, total_records = reduce(
-                    lambda acc, item: (max(acc[0], item[0]), acc[1] + int(item[1])),
+                    lambda acc, item: (max( filter( None, (acc[0], item[0]))), acc[1] + int(item[1])),
                     result,
                     ("", 0),
                 )
@@ -648,7 +652,7 @@ class Campaign_report_open_list(ActiveCampaign):
 
         # Stop parsing report pages when no data is returned from the AC API
         while (
-            record_count != -9999
+            record_count > 0
         ):
             params = {
                 "page": page,
