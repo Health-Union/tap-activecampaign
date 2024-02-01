@@ -515,6 +515,7 @@ class ActiveCampaign:
 import concurrent.futures
 from functools import partial, reduce
 from time import perf_counter
+from datetime import timedelta
 class Campaign_report_open_list(ActiveCampaign):
     """
     View all opens for a specific campaign. You will be able to see the email address of each open, much like on the Campaign Reports page.
@@ -528,6 +529,10 @@ class Campaign_report_open_list(ActiveCampaign):
     replication_method = "INCREMENTAL"
     key_properties = ["subscriberid", "campaignid"]
     extra_fields = ["campaignid"]
+    # The sort_direction needs to be explicitly defined, as the default behavior of API V1 
+    # doesn't correspond with the documentation available at 
+    # https://www.activecampaign.com/api/example.php?call=campaign_report_open_list
+    params = {"sort_direction": "DESC"}
     def sync(
         self,
         client,
@@ -594,7 +599,7 @@ class Campaign_report_open_list(ActiveCampaign):
                         result = future.result()
                         LOGGER.info(f"Result: {result} ")
                         if bookmark_field:
-                            max_bookmark_value = max(max_bookmark_value, result[0])
+                            max_bookmark_value = max(filter( None, ( max_bookmark_value, result[0]) ) )
                         total_records += int(result[1])
 
                     except Exception as e:
@@ -605,7 +610,7 @@ class Campaign_report_open_list(ActiveCampaign):
             result = map(partial_sync_data, campaigns)
             if bookmark_field:
                 max_bookmark_value, total_records = reduce(
-                    lambda acc, item: (max(acc[0], item[0]), acc[1] + int(item[1])),
+                    lambda acc, item: (max( filter( None, (acc[0], item[0]))), acc[1] + int(item[1])),
                     result,
                     ("", 0),
                 )
@@ -648,7 +653,7 @@ class Campaign_report_open_list(ActiveCampaign):
 
         # Stop parsing report pages when no data is returned from the AC API
         while (
-            record_count != -9999
+            record_count > 0
         ):
             params = {
                 "page": page,
@@ -740,6 +745,21 @@ class Campaign_report_open_list(ActiveCampaign):
                 transformed_data = transform_json(data_dict, self.stream_name, data_key)
 
         return transformed_data
+    
+    def write_bookmark(self, state, stream, value):
+        """Write bookmark to the state file.
+        Note: The API data is live. 
+        This implies that we need to establish an overlapping period for its smooth handling. 
+        Without this, there is a risk of losing some data.
+        """
+        bookmark_utc = utils.strptime_to_utc(value).replace(hour=0,minute=0,second=0)
+        bookmark_utc_prev_day = bookmark_utc - timedelta(days=1)
+        value = utils.strftime(bookmark_utc_prev_day)
+        if "bookmarks" not in state:
+            state["bookmarks"] = {}
+        state["bookmarks"][stream] = value
+        LOGGER.info("Write state for stream: {}, value: {}".format(stream, value))
+        singer.write_state(state)
 class Accounts(ActiveCampaign):
     """
     Get data for accounts.
