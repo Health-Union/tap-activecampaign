@@ -515,6 +515,7 @@ class ActiveCampaign:
 import concurrent.futures
 from functools import partial, reduce
 from time import perf_counter
+from datetime import timedelta
 class Campaign_report_open_list(ActiveCampaign):
     """
     View all opens for a specific campaign. You will be able to see the email address of each open, much like on the Campaign Reports page.
@@ -744,6 +745,21 @@ class Campaign_report_open_list(ActiveCampaign):
                 transformed_data = transform_json(data_dict, self.stream_name, data_key)
 
         return transformed_data
+    
+    def write_bookmark(self, state, stream, value):
+        """Write bookmark to the state file.
+        Note: The API data is live. 
+        This implies that we need to establish an overlapping period for its smooth handling. 
+        Without this, there is a risk of losing some data.
+        """
+        bookmark_utc = utils.strptime_to_utc(value).replace(hour=0,minute=0,second=0)
+        bookmark_utc_prev_day = bookmark_utc - timedelta(days=1)
+        value = utils.strftime(bookmark_utc_prev_day)
+        if "bookmarks" not in state:
+            state["bookmarks"] = {}
+        state["bookmarks"][stream] = value
+        LOGGER.info("Write state for stream: {}, value: {}".format(stream, value))
+        singer.write_state(state)
 class Accounts(ActiveCampaign):
     """
     Get data for accounts.
