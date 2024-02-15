@@ -272,6 +272,12 @@
     },
     "automation": {
       "type": ["null", "integer"]
+    },
+    "verified_opens": {
+      "type": ["null", "integer"]
+    },
+    "verified_unique_opens": {
+      "type": ["null", "integer"]
     }
   }
 }
